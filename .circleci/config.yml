@@ -1,23 +1,38 @@
+# PHP CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-php/ for more details
+#
 version: 2
-
 jobs:
   build:
     docker:
-      - image: dreadnaught/builder
+      # specify the version you desire here
+      - image: circleci/php:7.1-browsers
+
+      # Specify service dependencies here if necessary
+      # CircleCI maintains a library of pre-built images
+      # documented at https://circleci.com/docs/2.0/circleci-images/
+      # - image: circleci/mysql:9.4
+
+    working_directory: ~/repo
+
     steps:
       - checkout
-      - setup_remote_docker:
-          docker_layer_caching: true
-      - run: |
-          #TAG=0.1.$CIRCLE_BUILD_NUM
-          #$(aws ecr get-login --no-include-email --region us-east-1)
-          #docker build -t demo:$TAG .
-          #docker tag demo:latest 863823149701.dkr.ecr.us-east-1.amazonaws.com/demo:latest
-          #docker push 863823149701.dkr.ecr.us-east-1.amazonaws.com/demo:latest
-          rsync -avz -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" ./ circleci@laramie.io:~/test
 
-workflows:
-  version: 2
-    build-and-test:
-      jobs:
-        - build
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "composer.json" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+
+      - run: composer install -n --prefer-dist
+
+      - save_cache:
+          paths:
+            - ./vendor
+          key: v1-dependencies-{{ checksum "composer.json" }}
+
+      # run tests!
+      - run: phpunit
+
